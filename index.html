@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>LOTTO — 번호 자동생성</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			--ink: #0c1220;
+			--ink-soft: #1a2438;
+			--gold: #f0c14b;
+			--gold-deep: #c9921a;
+			--cream: #f7f1e3;
+			--ball-y: #f5c518;
+			--ball-b: #3b82f6;
+			--ball-r: #e11d48;
+			--ball-g: #16a34a;
+			--ball-k: #1f2937;
+			--muted: rgba(247, 241, 227, 0.55);
+			--accent: var(--gold);
+			--accent-deep: var(--gold-deep);
+		}
+
+		body[data-mode="pension"] {
+			--accent: #5eead4;
+			--accent-deep: #0d9488;
+		}
+
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+
+		html, body {
+			min-height: 100%;
+			font-family: "Outfit", sans-serif;
+			color: var(--cream);
+			background: var(--ink);
+		}
+
+		body {
+			background:
+				radial-gradient(ellipse 80% 50% at 50% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 55%),
+				radial-gradient(ellipse 60% 40% at 100% 100%, rgba(59, 130, 246, 0.12), transparent 50%),
+				radial-gradient(ellipse 50% 35% at 0% 80%, rgba(225, 29, 72, 0.1), transparent 45%),
+				linear-gradient(165deg, #0a0f1a 0%, #121a2c 45%, #0c1220 100%);
+			overflow-x: hidden;
+			transition: background 0.35s ease;
+		}
+
+		.noise {
+			pointer-events: none;
+			position: fixed;
+			inset: 0;
+			opacity: 0.04;
+			background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+			z-index: 0;
+		}
+
+		.wrap {
+			position: relative;
+			z-index: 1;
+			min-height: 100vh;
+			min-height: 100dvh;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 2.5rem 1.25rem 3rem;
+			text-align: center;
+		}
+
+		.tabs {
+			display: flex;
+			gap: 0.35rem;
+			padding: 0.3rem;
+			margin-bottom: 1.75rem;
+			border-radius: 999px;
+			background: rgba(247, 241, 227, 0.06);
+			border: 1px solid rgba(247, 241, 227, 0.12);
+			animation: fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+		}
+
+		.tab {
+			appearance: none;
+			border: none;
+			cursor: pointer;
+			font-family: inherit;
+			font-weight: 600;
+			font-size: 0.9rem;
+			letter-spacing: 0.04em;
+			padding: 0.65rem 1.35rem;
+			border-radius: 999px;
+			color: var(--muted);
+			background: transparent;
+			transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+		}
+
+		.tab:hover { color: var(--cream); }
+
+		.tab.active {
+			color: #1a1200;
+			background: linear-gradient(180deg, #fff0b8, var(--accent) 42%, var(--accent-deep));
+			box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 35%, transparent);
+		}
+
+		body[data-mode="pension"] .tab.active {
+			color: #042f2e;
+		}
+
+		.brand {
+			font-family: "Bebas Neue", sans-serif;
+			font-size: clamp(3.6rem, 15vw, 7.2rem);
+			letter-spacing: 0.06em;
+			line-height: 0.9;
+			background: linear-gradient(180deg, #fff6d6 0%, var(--accent) 45%, var(--accent-deep) 100%);
+			-webkit-background-clip: text;
+			background-clip: text;
+			color: transparent;
+			text-shadow: 0 0 40px color-mix(in srgb, var(--accent) 25%, transparent);
+			animation: brandIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+		}
+
+		.tag {
+			margin-top: 0.75rem;
+			font-size: 0.95rem;
+			font-weight: 500;
+			letter-spacing: 0.04em;
+			color: var(--muted);
+			animation: fadeUp 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+		}
+
+		.balls {
+			display: flex;
+			flex-wrap: nowrap;
+			justify-content: center;
+			align-items: center;
+			gap: 0.4rem;
+			margin: 2.75rem 0 2rem;
+			min-height: 3.4rem;
+			width: 100%;
+			max-width: 26rem;
+			animation: fadeUp 0.7s 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+		}
+
+		.ball {
+			width: 3rem;
+			height: 3rem;
+			flex: 0 0 3rem;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-family: "Bebas Neue", sans-serif;
+			font-size: 1.35rem;
+			letter-spacing: 0.02em;
+			color: #fff;
+			box-shadow:
+				inset 0 -6px 12px rgba(0,0,0,0.28),
+				inset 0 4px 8px rgba(255,255,255,0.35),
+				0 8px 18px rgba(0,0,0,0.35);
+			transform: translateY(24px) scale(0.6);
+			opacity: 0;
+		}
+
+		.ball.show {
+			animation: ballPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+		}
+
+		.ball.group {
+			width: auto;
+			min-width: 3.4rem;
+			padding: 0 0.55rem;
+			border-radius: 1rem;
+			flex: 0 0 auto;
+			font-size: 1.15rem;
+			letter-spacing: 0.06em;
+		}
+
+		.ball.sep {
+			width: auto;
+			flex: 0 0 auto;
+			height: auto;
+			min-height: 0;
+			box-shadow: none;
+			background: none !important;
+			color: var(--muted);
+			font-size: 1.1rem;
+			opacity: 0.45;
+			transform: none;
+			animation: none;
+		}
+
+		.ball.sep.show { opacity: 0.45; }
+
+		.ball.c1 { background: radial-gradient(circle at 32% 28%, #ffe066, var(--ball-y) 55%, #b8860b); color: #1a1200; }
+		.ball.c2 { background: radial-gradient(circle at 32% 28%, #93c5fd, var(--ball-b) 55%, #1d4ed8); }
+		.ball.c3 { background: radial-gradient(circle at 32% 28%, #fda4af, var(--ball-r) 55%, #9f1239); }
+		.ball.c4 { background: radial-gradient(circle at 32% 28%, #86efac, var(--ball-g) 55%, #15803d); }
+		.ball.c5 { background: radial-gradient(circle at 32% 28%, #9ca3af, var(--ball-k) 55%, #111827); }
+		.ball.cg { background: radial-gradient(circle at 32% 28%, #99f6e4, #14b8a6 55%, #0f766e); color: #042f2e; }
+
+		.actions {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.75rem;
+			justify-content: center;
+			animation: fadeUp 0.7s 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+		}
+
+		.btn {
+			appearance: none;
+			border: none;
+			cursor: pointer;
+			font-family: inherit;
+			font-weight: 600;
+			font-size: 1rem;
+			padding: 0.95rem 1.75rem;
+			border-radius: 999px;
+			transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+		}
+
+		.btn:active { transform: scale(0.97); }
+
+		.btn:disabled {
+			opacity: 0.55;
+			cursor: wait;
+			pointer-events: none;
+		}
+
+		.btn-primary {
+			color: #1a1200;
+			background: linear-gradient(180deg, #ffe08a, var(--accent) 40%, var(--accent-deep));
+			box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 35%, transparent);
+		}
+
+		body[data-mode="pension"] .btn-primary { color: #042f2e; }
+
+		.btn-primary:hover {
+			box-shadow: 0 12px 32px color-mix(in srgb, var(--accent) 45%, transparent);
+		}
+
+		.btn-primary.spinning {
+			pointer-events: none;
+			animation: pulseGlow 0.9s ease-in-out infinite;
+		}
+
+		.btn-ghost {
+			color: var(--cream);
+			background: transparent;
+			border: 1px solid rgba(247, 241, 227, 0.28);
+		}
+
+		.btn-ghost:hover {
+			background: rgba(247, 241, 227, 0.08);
+		}
+
+		.meta {
+			margin-top: 1.75rem;
+			font-size: 0.8rem;
+			color: var(--muted);
+			animation: fadeUp 0.7s 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+		}
+
+		.history {
+			width: min(420px, 100%);
+			margin-top: 2.5rem;
+			text-align: left;
+			animation: fadeUp 0.7s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+		}
+
+		.history h2 {
+			font-size: 0.75rem;
+			font-weight: 600;
+			letter-spacing: 0.12em;
+			text-transform: uppercase;
+			color: var(--muted);
+			margin-bottom: 0.75rem;
+		}
+
+		.history ul {
+			list-style: none;
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+		}
+
+		.history li {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+			padding: 0.65rem 0;
+			border-bottom: 1px solid rgba(247, 241, 227, 0.08);
+			font-size: 0.9rem;
+			font-variant-numeric: tabular-nums;
+		}
+
+		.history .nums {
+			font-weight: 600;
+			letter-spacing: 0.04em;
+		}
+
+		.history .time {
+			flex-shrink: 0;
+			font-size: 0.75rem;
+			color: var(--muted);
+		}
+
+		.history .empty {
+			color: var(--muted);
+			font-size: 0.85rem;
+			padding: 0.5rem 0;
+		}
+
+		@keyframes brandIn {
+			from { opacity: 0; transform: translateY(18px) scale(0.96); filter: blur(6px); }
+			to { opacity: 1; transform: none; filter: none; }
+		}
+
+		@keyframes fadeUp {
+			from { opacity: 0; transform: translateY(14px); }
+			to { opacity: 1; transform: none; }
+		}
+
+		@keyframes ballPop {
+			0% { opacity: 0; transform: translateY(28px) scale(0.5) rotate(-18deg); }
+			70% { opacity: 1; transform: translateY(-4px) scale(1.06) rotate(4deg); }
+			100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+		}
+
+		@keyframes pulseGlow {
+			0%, 100% { box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 35%, transparent); }
+			50% { box-shadow: 0 10px 36px color-mix(in srgb, var(--accent) 65%, transparent); }
+		}
+
+		@media (max-width: 420px) {
+			.ball { width: 2.35rem; height: 2.35rem; flex-basis: 2.35rem; font-size: 1.05rem; }
+			.ball.group { min-width: 2.8rem; font-size: 0.95rem; padding: 0 0.4rem; }
+			.balls { gap: 0.22rem; min-height: 2.6rem; }
+			.tab { padding: 0.55rem 1rem; font-size: 0.82rem; }
+		}
+	</style>
+</head>
+<body data-mode="lotto">
+	<div class="noise" aria-hidden="true"></div>
+	<main class="wrap">
+		<div class="tabs" role="tablist" aria-label="복권 종류">
+			<button type="button" class="tab active" role="tab" aria-selected="true" data-mode="lotto" id="tabLotto">로또</button>
+			<button type="button" class="tab" role="tab" aria-selected="false" data-mode="pension" id="tabPension">연금복권</button>
+		</div>
+
+		<h1 class="brand" id="brandTitle">LOTTO</h1>
+		<p class="tag" id="tagText">1 ~ 45 중 서로 다른 번호 6개 · 역대 1등·연속번호 제외</p>
+
+		<div class="balls" id="balls" aria-live="polite" aria-atomic="true"></div>
+
+		<div class="actions">
+			<button type="button" class="btn btn-primary" id="btnGenerate" disabled>데이터 로딩 중…</button>
+			<button type="button" class="btn btn-ghost" id="btnCopy">복사</button>
+		</div>
+
+		<p class="meta" id="metaText">역대 당첨번호 불러오는 중…</p>
+
+		<section class="history" aria-label="최근 생성 기록">
+			<h2>Recent</h2>
+			<ul id="historyList">
+				<li class="empty">아직 생성된 번호가 없습니다</li>
+			</ul>
+		</section>
+	</main>
+
+	<script>
+	(function () {
+		var historyMax = 5;
+		var mode = "lotto";
+		var spinning = false;
+
+		var games = {
+			lotto: {
+				brand: "LOTTO",
+				tag: "1 ~ 45 중 서로 다른 번호 6개 · 역대 1등·연속번호 제외",
+				title: "LOTTO — 번호 자동생성",
+				url: "/Lucky_Lotto/lotto_history.json?_=",
+				history: [],
+				current: null,
+				pastSet: {},
+				pastReady: false,
+				pastLatest: 0,
+				pastCount: 0
+			},
+			pension: {
+				brand: "720+",
+				tag: "1~5조 · 0~9 숫자 6자리 · 역대 1등 조합 제외",
+				title: "연금복권720+ — 번호 자동생성",
+				url: "/Lucky_Lotto/pension_history.json?_=",
+				history: [],
+				current: null,
+				pastSet: {},
+				pastReady: false,
+				pastLatest: 0,
+				pastCount: 0
+			}
+		};
+
+		var ballsEl = document.getElementById("balls");
+		var btnGenerate = document.getElementById("btnGenerate");
+		var btnCopy = document.getElementById("btnCopy");
+		var historyList = document.getElementById("historyList");
+		var metaText = document.getElementById("metaText");
+		var brandTitle = document.getElementById("brandTitle");
+		var tagText = document.getElementById("tagText");
+		var tabLotto = document.getElementById("tabLotto");
+		var tabPension = document.getElementById("tabPension");
+
+		function game() { return games[mode]; }
+
+		function ballClass(n) {
+			if (n <= 10) return "c1";
+			if (n <= 20) return "c2";
+			if (n <= 30) return "c3";
+			if (n <= 40) return "c4";
+			return "c5";
+		}
+
+		function digitClass(d) {
+			if (d <= 1) return "c1";
+			if (d <= 3) return "c2";
+			if (d <= 5) return "c3";
+			if (d <= 7) return "c4";
+			return "c5";
+		}
+
+		function lottoKey(nums) {
+			return nums.slice().sort(function (a, b) { return a - b; }).join("-");
+		}
+
+		function pensionKey(ticket) {
+			return ticket.group + "-" + ticket.digits.join("");
+		}
+
+		function formatLotto(nums) {
+			return nums.join(" · ");
+		}
+
+		function formatPension(ticket) {
+			return ticket.group + "조 " + ticket.digits.join(" ");
+		}
+
+		function copyText() {
+			var g = game();
+			if (!g.current) return "";
+			if (mode === "lotto") return g.current.join(", ");
+			return g.current.group + "조 " + g.current.digits.join("");
+		}
+
+		function pickLottoRaw() {
+			var pool = [];
+			var i, j, t;
+			for (i = 1; i <= 45; i++) pool.push(i);
+			for (i = pool.length - 1; i > 0; i--) {
+				j = Math.floor(Math.random() * (i + 1));
+				t = pool[i];
+				pool[i] = pool[j];
+				pool[j] = t;
+			}
+			return pool.slice(0, 6).sort(function (a, b) { return a - b; });
+		}
+
+		function isLottoConsecutive(nums) {
+			var sorted = nums.slice().sort(function (a, b) { return a - b; });
+			for (var i = 1; i < sorted.length; i++) {
+				if (sorted[i] !== sorted[i - 1] + 1) return false;
+			}
+			return true;
+		}
+
+		function pickLotto() {
+			var g = games.lotto;
+			var nums, tries = 0;
+			do {
+				nums = pickLottoRaw();
+				tries++;
+			} while ((g.pastSet[lottoKey(nums)] || isLottoConsecutive(nums)) && tries < 5000);
+			return nums;
+		}
+
+		function pickPensionRaw() {
+			var digits = [];
+			for (var i = 0; i < 6; i++) digits.push(Math.floor(Math.random() * 10));
+			return {
+				group: 1 + Math.floor(Math.random() * 5),
+				digits: digits
+			};
+		}
+
+		function pickPension() {
+			var g = games.pension;
+			var ticket, tries = 0;
+			do {
+				ticket = pickPensionRaw();
+				tries++;
+			} while (g.pastSet[pensionKey(ticket)] && tries < 5000);
+			return ticket;
+		}
+
+		function pickCurrent() {
+			return mode === "lotto" ? pickLotto() : pickPension();
+		}
+
+		function makeBall(text, className, label) {
+			var el = document.createElement("span");
+			el.className = "ball " + className;
+			el.textContent = text;
+			el.setAttribute("aria-label", label || text);
+			return el;
+		}
+
+		function renderBalls(value, animate) {
+			ballsEl.innerHTML = "";
+			var nodes = [];
+			if (mode === "lotto") {
+				(value || []).forEach(function (n) {
+					nodes.push(makeBall(n, ballClass(n), n + "번"));
+				});
+			} else if (value) {
+				nodes.push(makeBall(value.group + "조", "group cg", value.group + "조"));
+				nodes.push(makeBall("·", "sep", ""));
+				value.digits.forEach(function (d, idx) {
+					nodes.push(makeBall(d, digitClass(d), (idx + 1) + "번째 " + d));
+				});
+			}
+
+			nodes.forEach(function (el, idx) {
+				ballsEl.appendChild(el);
+				if (el.classList.contains("sep")) {
+					el.classList.add("show");
+					return;
+				}
+				if (animate) {
+					setTimeout(function () { el.classList.add("show"); }, 80 + idx * 90);
+				} else {
+					el.classList.add("show");
+				}
+			});
+		}
+
+		function renderPlaceholders() {
+			ballsEl.innerHTML = "";
+			var count = mode === "lotto" ? 6 : 8;
+			for (var i = 0; i < count; i++) {
+				(function (idx) {
+					var el;
+					if (mode === "pension" && idx === 0) {
+						el = makeBall("·조", "group c5", "");
+					} else if (mode === "pension" && idx === 1) {
+						el = makeBall("·", "sep", "");
+						el.style.opacity = "0.35";
+						ballsEl.appendChild(el);
+						el.classList.add("show");
+						return;
+					} else {
+						el = makeBall("·", "c5", "");
+					}
+					el.style.opacity = "0.35";
+					ballsEl.appendChild(el);
+					setTimeout(function () { el.classList.add("show"); }, 80 + idx * 70);
+				})(i);
+			}
+		}
+
+		function pad2(n) {
+			return (n < 10 ? "0" : "") + n;
+		}
+
+		function nowLabel() {
+			var d = new Date();
+			return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+		}
+
+		function renderHistory() {
+			var g = game();
+			if (!g.history.length) {
+				historyList.innerHTML = '<li class="empty">아직 생성된 번호가 없습니다</li>';
+				return;
+			}
+			historyList.innerHTML = g.history.map(function (item) {
+				return '<li><span class="nums">' + item.label + '</span><span class="time">' + item.time + '</span></li>';
+			}).join("");
+		}
+
+		function setMetaReady() {
+			var g = game();
+			metaText.textContent = "역대 " + g.pastLatest + "회까지 " + g.pastCount + "개 1등 조합 제외 · 재미로만 즐기세요";
+			btnGenerate.disabled = false;
+			btnGenerate.textContent = g.current ? "다시 생성" : "번호 생성";
+			g.pastReady = true;
+		}
+
+		function ingestDraws(g, draws) {
+			(draws || []).forEach(function (k) { g.pastSet[k] = true; });
+			g.pastCount = Object.keys(g.pastSet).length;
+		}
+
+		function loadGameHistory(name) {
+			var g = games[name];
+			metaText.textContent = "역대 당첨번호 불러오는 중…";
+			btnGenerate.disabled = true;
+			btnGenerate.textContent = "데이터 로딩 중…";
+			return fetch(g.url + Date.now())
+				.then(function (res) {
+					if (!res.ok) throw new Error("HTTP " + res.status);
+					return res.json();
+				})
+				.then(function (data) {
+					g.pastSet = {};
+					ingestDraws(g, data.draws || []);
+					g.pastLatest = data.latest || g.pastCount;
+					g.pastCount = Object.keys(g.pastSet).length;
+					if (mode === name) setMetaReady();
+				})
+				.catch(function (err) {
+					console.warn(name + " history load fail:", err);
+					g.pastReady = true;
+					if (mode === name) {
+						metaText.textContent = "역대 데이터 로드 실패 — 제외 없이 생성됩니다";
+						btnGenerate.disabled = false;
+						btnGenerate.textContent = "번호 생성";
+					}
+				});
+		}
+
+		function switchMode(next) {
+			if (spinning || next === mode) return;
+			mode = next;
+			document.body.setAttribute("data-mode", mode);
+			tabLotto.classList.toggle("active", mode === "lotto");
+			tabPension.classList.toggle("active", mode === "pension");
+			tabLotto.setAttribute("aria-selected", mode === "lotto" ? "true" : "false");
+			tabPension.setAttribute("aria-selected", mode === "pension" ? "true" : "false");
+
+			var g = game();
+			brandTitle.textContent = g.brand;
+			tagText.textContent = g.tag;
+			document.title = g.title;
+			btnCopy.textContent = "복사";
+
+			if (g.current) renderBalls(g.current, false);
+			else renderPlaceholders();
+			renderHistory();
+
+			if (g.pastReady) setMetaReady();
+			else {
+				metaText.textContent = "역대 당첨번호 불러오는 중…";
+				btnGenerate.disabled = true;
+				btnGenerate.textContent = "데이터 로딩 중…";
+			}
+		}
+
+		function generate() {
+			var g = game();
+			if (spinning || !g.pastReady) return;
+			spinning = true;
+			btnGenerate.classList.add("spinning");
+			btnGenerate.textContent = "추첨 중…";
+
+			var flashCount = 0;
+			var flashTimer = setInterval(function () {
+				renderBalls(pickCurrent(), false);
+				flashCount++;
+				if (flashCount >= 8) {
+					clearInterval(flashTimer);
+					g.current = pickCurrent();
+					renderBalls(g.current, true);
+					g.history.unshift({
+						label: mode === "lotto" ? formatLotto(g.current) : formatPension(g.current),
+						time: nowLabel()
+					});
+					if (g.history.length > historyMax) g.history.pop();
+					renderHistory();
+					setTimeout(function () {
+						spinning = false;
+						btnGenerate.classList.remove("spinning");
+						btnGenerate.textContent = "다시 생성";
+					}, 750);
+				}
+			}, 70);
+		}
+
+		function copyNums() {
+			var text = copyText();
+			if (!text) {
+				alert("먼저 번호를 생성해 주세요.");
+				return;
+			}
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text).then(function () {
+					btnCopy.textContent = "복사됨!";
+					setTimeout(function () { btnCopy.textContent = "복사"; }, 1200);
+				}).catch(function () {
+					fallbackCopy(text);
+				});
+			} else {
+				fallbackCopy(text);
+			}
+		}
+
+		function fallbackCopy(text) {
+			var ta = document.createElement("textarea");
+			ta.value = text;
+			document.body.appendChild(ta);
+			ta.select();
+			try {
+				document.execCommand("copy");
+				btnCopy.textContent = "복사됨!";
+				setTimeout(function () { btnCopy.textContent = "복사"; }, 1200);
+			} catch (e) {
+				alert(text);
+			}
+			document.body.removeChild(ta);
+		}
+
+		tabLotto.addEventListener("click", function () { switchMode("lotto"); });
+		tabPension.addEventListener("click", function () { switchMode("pension"); });
+		btnGenerate.addEventListener("click", generate);
+		btnCopy.addEventListener("click", copyNums);
+
+		renderPlaceholders();
+		loadGameHistory("lotto");
+		loadGameHistory("pension");
+	})();
+	</script>
+</body>
+</html>
