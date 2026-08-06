@@ -386,6 +386,7 @@
 				current: null,
 				pastSet: {},
 				pastReady: false,
+				loadError: false,
 				pastLatest: 0,
 				pastCount: 0
 			},
@@ -398,6 +399,7 @@
 				current: null,
 				pastSet: {},
 				pastReady: false,
+				loadError: false,
 				pastLatest: 0,
 				pastCount: 0
 			}
@@ -595,6 +597,16 @@
 			btnGenerate.disabled = false;
 			btnGenerate.textContent = g.current ? "다시 생성" : "번호 생성";
 			g.pastReady = true;
+			g.loadError = false;
+		}
+
+		function setMetaError() {
+			var g = game();
+			metaText.textContent = "역대 데이터 로드 실패 — 제외 없이 생성됩니다";
+			btnGenerate.disabled = false;
+			btnGenerate.textContent = g.current ? "다시 생성" : "번호 생성";
+			g.pastReady = true;
+			g.loadError = true;
 		}
 
 		function ingestDraws(g, draws) {
@@ -604,9 +616,13 @@
 
 		function loadGameHistory(name) {
 			var g = games[name];
-			metaText.textContent = "역대 당첨번호 불러오는 중…";
-			btnGenerate.disabled = true;
-			btnGenerate.textContent = "데이터 로딩 중…";
+			g.loadError = false;
+			g.pastReady = false;
+			if (mode === name) {
+				metaText.textContent = "역대 당첨번호 불러오는 중…";
+				btnGenerate.disabled = true;
+				btnGenerate.textContent = "데이터 로딩 중…";
+			}
 			return fetch(g.url + Date.now())
 				.then(function (res) {
 					if (!res.ok) throw new Error("HTTP " + res.status);
@@ -617,16 +633,15 @@
 					ingestDraws(g, data.draws || []);
 					g.pastLatest = data.latest || g.pastCount;
 					g.pastCount = Object.keys(g.pastSet).length;
+					g.pastReady = true;
+					g.loadError = false;
 					if (mode === name) setMetaReady();
 				})
 				.catch(function (err) {
 					console.warn(name + " history load fail:", err);
 					g.pastReady = true;
-					if (mode === name) {
-						metaText.textContent = "역대 데이터 로드 실패 — 제외 없이 생성됩니다";
-						btnGenerate.disabled = false;
-						btnGenerate.textContent = "번호 생성";
-					}
+					g.loadError = true;
+					if (mode === name) setMetaError();
 				});
 		}
 
@@ -649,11 +664,14 @@
 			else renderPlaceholders();
 			renderHistory();
 
-			if (g.pastReady) setMetaReady();
-			else {
+			if (!g.pastReady) {
 				metaText.textContent = "역대 당첨번호 불러오는 중…";
 				btnGenerate.disabled = true;
 				btnGenerate.textContent = "데이터 로딩 중…";
+			} else if (g.loadError) {
+				setMetaError();
+			} else {
+				setMetaReady();
 			}
 		}
 
