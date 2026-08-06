@@ -1,0 +1,43 @@
+# 로또 / 연금복권 역대 draws 자동 갱신
+name: Update lotto history
+
+on:
+  schedule:
+    # 로또: 매주 토요일 12:00 UTC = 토요일 21:00 KST
+    - cron: "0 12 * * 6"
+    # 연금복권: 매주 목요일 12:30 UTC = 목요일 21:30 KST
+    - cron: "30 12 * * 4"
+  workflow_dispatch: # 수동 실행용
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Update lotto_history.json
+        run: node update-lotto-history.mjs
+
+      - name: Update pension_history.json
+        run: node update-pension-history.mjs
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lotto_history.json pension_history.json
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "chore: update lottery history to latest draws"
+            git push
+          fi
