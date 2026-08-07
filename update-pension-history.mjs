@@ -8,7 +8,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const HISTORY_PATH = path.join(__dirname, "pension_history.json");
+// 스크립트와 pension_history.json 모두 저장소 루트에 있음
+const ROOT = __dirname;
+const HISTORY_PATH = path.join(ROOT, "pension_history.json");
 const MAX_FETCH = 40;
 const KEY_RX =
 	/"value":"(\d)"\},\{"@type":"PropertyValue","name":"[^"]*","value":"(\d), (\d), (\d), (\d), (\d), (\d)"/;
