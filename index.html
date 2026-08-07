@@ -381,7 +381,7 @@
 				brand: "LOTTO",
 				tag: "1 ~ 45 중 서로 다른 번호 6개 · 역대 1등·연속번호 제외",
 				title: "LOTTO — 번호 자동생성",
-				url: "/DongHang/lotto_history.json?_=",
+				file: "lotto_history.json",
 				history: [],
 				current: null,
 				pastSet: {},
@@ -394,7 +394,7 @@
 				brand: "720+",
 				tag: "1~5조 · 0~9 숫자 6자리 · 역대 1등 조합 제외",
 				title: "연금복권720+ — 번호 자동생성",
-				url: "/DongHang/pension_history.json?_=",
+				file: "pension_history.json",
 				history: [],
 				current: null,
 				pastSet: {},
@@ -593,6 +593,10 @@
 
 		function setMetaReady() {
 			var g = game();
+			if (!g.pastCount) {
+				setMetaError();
+				return;
+			}
 			metaText.textContent = "역대 " + g.pastLatest + "회까지 " + g.pastCount + "개 1등 조합 제외 · 재미로만 즐기세요";
 			btnGenerate.disabled = false;
 			btnGenerate.textContent = g.current ? "다시 생성" : "번호 생성";
@@ -610,8 +614,53 @@
 		}
 
 		function ingestDraws(g, draws) {
-			(draws || []).forEach(function (k) { g.pastSet[k] = true; });
+			(draws || []).forEach(function (k) {
+				if (typeof k === "string" && k) g.pastSet[k] = true;
+			});
 			g.pastCount = Object.keys(g.pastSet).length;
+		}
+
+		function historyUrlCandidates(file) {
+			var stamp = Date.now();
+			var dir = "";
+			try {
+				dir = new URL(".", location.href).pathname;
+			} catch (e) {
+				dir = location.pathname.replace(/[^/]*$/, "");
+			}
+			if (dir.slice(-1) !== "/") dir += "/";
+			return [
+				dir + file + "?_=" + stamp,
+				"./" + file + "?_=" + stamp,
+				"/DongHang/" + file + "?_=" + stamp
+			];
+		}
+
+		function fetchHistoryData(file) {
+			var urls = historyUrlCandidates(file);
+			var lastErr = new Error("no history url");
+
+			function tryAt(i) {
+				if (i >= urls.length) return Promise.reject(lastErr);
+				return fetch(urls[i], { cache: "no-store" })
+					.then(function (res) {
+						if (!res.ok) throw new Error("HTTP " + res.status + " " + urls[i]);
+						return res.json();
+					})
+					.then(function (data) {
+						var draws = data && data.draws;
+						if (!Array.isArray(draws) || !draws.length) {
+							throw new Error("empty draws " + urls[i]);
+						}
+						return data;
+					})
+					.catch(function (err) {
+						lastErr = err;
+						return tryAt(i + 1);
+					});
+			}
+
+			return tryAt(0);
 		}
 
 		function loadGameHistory(name) {
@@ -623,22 +672,22 @@
 				btnGenerate.disabled = true;
 				btnGenerate.textContent = "데이터 로딩 중…";
 			}
-			return fetch(g.url + Date.now())
-				.then(function (res) {
-					if (!res.ok) throw new Error("HTTP " + res.status);
-					return res.json();
-				})
+			return fetchHistoryData(g.file)
 				.then(function (data) {
 					g.pastSet = {};
-					ingestDraws(g, data.draws || []);
-					g.pastLatest = data.latest || g.pastCount;
+					ingestDraws(g, data.draws);
+					g.pastLatest = Number(data.latest) || Number(data.count) || g.pastCount;
 					g.pastCount = Object.keys(g.pastSet).length;
+					if (!g.pastCount) throw new Error("no draws ingested");
 					g.pastReady = true;
 					g.loadError = false;
 					if (mode === name) setMetaReady();
 				})
 				.catch(function (err) {
 					console.warn(name + " history load fail:", err);
+					g.pastSet = {};
+					g.pastLatest = 0;
+					g.pastCount = 0;
 					g.pastReady = true;
 					g.loadError = true;
 					if (mode === name) setMetaError();
